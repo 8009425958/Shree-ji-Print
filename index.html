@@ -11,7 +11,7 @@
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #f4f7f6; padding: 15px; }
-        .container { max-width: 650px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .container { max-width: 750px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         h2 { text-align: center; color: #333; margin-bottom: 20px; }
         .tabs { display: flex; margin-bottom: 20px; border-bottom: 2px solid #ddd; }
         .tab-btn { flex: 1; padding: 10px; text-align: center; background: #eee; cursor: pointer; font-weight: bold; border: none; outline: none; }
@@ -30,6 +30,7 @@
         th { background-color: #007bff; color: white; }
         tfoot tr { background-color: #e9ecef; font-weight: bold; }
         .delete-btn { background: #dc3545; color: white; border: none; padding: 3px 8px; border-radius: 3px; cursor: pointer; }
+        .summary-header { background-color: #28a745 !important; }
     </style>
 </head>
 <body>
@@ -48,7 +49,7 @@
         <div id="operatorTab">
             <div class="form-group">
                 <label>Machine Name / ID</label>
-                <input type="text" id="opMachineId" placeholder="e.g. MS-JP7 (Machine 1)">
+                <input type="text" id="opMachineId" placeholder="e.g. MS1">
             </div>
             <button class="btn-submit" onclick="loginOperator()">Login as Operator</button>
         </div>
@@ -90,7 +91,11 @@
         </div>
         <div class="form-group">
             <label>Total Meters Printed</label>
-            <input type="number" id="prodMeters" placeholder="e.g. 1200">
+            <input type="number" step="any" id="prodMeters" placeholder="e.g. 1200">
+        </div>
+        <div class="form-group">
+            <label>Ink Used (Liters)</label>
+            <input type="number" step="any" id="inkCost" placeholder="e.g. 1, 2.5, 6.2">
         </div>
         <button class="btn-submit" onclick="submitProduction()">Submit Report</button>
     </div>
@@ -98,7 +103,7 @@
     <!-- ADMIN DASHBOARD -->
     <div id="adminDashboard" class="hidden">
         <button class="logout-btn" onclick="logout()">Logout</button>
-        <h3>All Machines Production Report</h3>
+        <h3>Detailed Production Report</h3>
         <hr style="margin: 10px 0;">
 
         <table>
@@ -109,19 +114,38 @@
                     <th>Shift</th>
                     <th>Job Name</th>
                     <th>Meters</th>
+                    <th>Ink Used</th>
                     <th>Action</th>
                 </tr>
             </thead>
             <tbody id="reportTableBody">
-                <!-- Data dynamically loaded -->
+                <!-- Detailed Data -->
             </tbody>
             <tfoot>
                 <tr>
-                    <td colspan="4" style="text-align: right;"><strong>Total Meters:</strong></td>
+                    <td colspan="4" style="text-align: right;"><strong>Total:</strong></td>
                     <td id="totalMetersCell"><strong>0 m</strong></td>
+                    <td id="totalInkCell"><strong>0 Ltr</strong></td>
                     <td></td>
                 </tr>
             </tfoot>
+        </table>
+
+        <br>
+        <h3>Machine-wise Summary (Day / Night Jod)</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th class="summary-header">Machine</th>
+                    <th class="summary-header">Day Shift (m)</th>
+                    <th class="summary-header">Night Shift (m)</th>
+                    <th class="summary-header">Total Meters</th>
+                    <th class="summary-header">Total Ink (Ltr)</th>
+                </tr>
+            </thead>
+            <tbody id="summaryTableBody">
+                <!-- Summary Data -->
+            </tbody>
         </table>
     </div>
 </div>
@@ -160,7 +184,7 @@
     }
 
     function loginOperator() {
-        const mId = document.getElementById('opMachineId').value;
+        const mId = document.getElementById('opMachineId').value.trim();
         if (!mId) {
             alert("Kripya Machine ID enter karein!");
             return;
@@ -198,9 +222,10 @@
         const shift = document.getElementById('prodShift').value;
         const job = document.getElementById('jobName').value;
         const meters = document.getElementById('prodMeters').value;
+        const ink = document.getElementById('inkCost').value;
 
         if (!job || !meters) {
-            alert("Kripya sari details bharein!");
+            alert("Kripya Design Name aur Meters bharein!");
             return;
         }
 
@@ -210,7 +235,8 @@
             date: date,
             shift: shift,
             job: job,
-            meters: parseFloat(meters)
+            meters: parseFloat(meters) || 0,
+            ink: parseFloat(ink) || 0
         }, function(error) {
             if (error) {
                 alert("Data save karne me error: " + error.message);
@@ -218,6 +244,7 @@
                 alert("Production Report Submit ho gayi!");
                 document.getElementById('jobName').value = "";
                 document.getElementById('prodMeters').value = "";
+                document.getElementById('inkCost').value = "";
             }
         });
     }
@@ -227,33 +254,75 @@
         reportsRef.on('value', (snapshot) => {
             const data = snapshot.val();
             const tbody = document.getElementById('reportTableBody');
+            const summaryBody = document.getElementById('summaryTableBody');
             const totalCell = document.getElementById('totalMetersCell');
+            const totalInkCell = document.getElementById('totalInkCell');
+            
             tbody.innerHTML = "";
-            let grandTotal = 0;
+            summaryBody.innerHTML = "";
+            
+            let grandTotalMeters = 0;
+            let grandTotalInk = 0;
+            let machineSummary = {};
 
             if(!data) {
-                tbody.innerHTML = "<tr><td colspan='6'>No reports available</td></tr>";
+                tbody.innerHTML = "<tr><td colspan='7'>No reports available</td></tr>";
+                summaryBody.innerHTML = "<tr><td colspan='5'>No summary available</td></tr>";
                 totalCell.innerHTML = "<strong>0 m</strong>";
+                totalInkCell.innerHTML = "<strong>0 Ltr</strong>";
                 return;
             }
 
             Object.keys(data).reverse().forEach(key => {
                 const r = data[key];
                 const metersVal = parseFloat(r.meters) || 0;
-                grandTotal += metersVal;
+                const inkVal = parseFloat(r.ink) || 0;
+                const mName = r.mId || "Unknown";
 
+                grandTotalMeters += metersVal;
+                grandTotalInk += inkVal;
+
+                // Machine summary calculation
+                if (!machineSummary[mName]) {
+                    machineSummary[mName] = { day: 0, night: 0, ink: 0 };
+                }
+                if (r.shift === "Day Shift") {
+                    machineSummary[mName].day += metersVal;
+                } else if (r.shift === "Night Shift") {
+                    machineSummary[mName].night += metersVal;
+                }
+                machineSummary[mName].ink += inkVal;
+
+                // Detailed Row
                 const row = `<tr>
                     <td>${r.date}</td>
                     <td>${r.mId}</td>
                     <td>${r.shift}</td>
                     <td>${r.job}</td>
                     <td><b>${metersVal} m</b></td>
+                    <td>${inkVal > 0 ? inkVal + ' Ltr' : '-'}</td>
                     <td><button class="delete-btn" onclick="deleteEntry('${key}')">X</button></td>
                 </tr>`;
                 tbody.innerHTML += row;
             });
 
-            totalCell.innerHTML = `<strong>${grandTotal} m</strong>`;
+            // Set Main Totals
+            totalCell.innerHTML = `<strong>${grandTotalMeters.toFixed(1)} m</strong>`;
+            totalInkCell.innerHTML = `<strong>${grandTotalInk.toFixed(1)} Ltr</strong>`;
+
+            // Build Machine Summary Table
+            Object.keys(machineSummary).forEach(mName => {
+                const s = machineSummary[mName];
+                const totalM = s.day + s.night;
+                const sRow = `<tr>
+                    <td><b>${mName}</b></td>
+                    <td>${s.day.toFixed(1)} m</td>
+                    <td>${s.night.toFixed(1)} m</td>
+                    <td><b>${totalM.toFixed(1)} m</b></td>
+                    <td><b>${s.ink.toFixed(1)} Ltr</b></td>
+                </tr>`;
+                summaryBody.innerHTML += sRow;
+            });
         });
     }
 
