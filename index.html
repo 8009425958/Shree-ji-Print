@@ -46,10 +46,6 @@
                 <label>Machine Name / ID</label>
                 <input type="text" id="opMachineId" placeholder="e.g. MS-JP7 (Machine 1)">
             </div>
-            <div class="form-group">
-                <label>Operator Password</label>
-                <input type="password" id="opPass" placeholder="Enter Operator Password">
-            </div>
             <button class="btn-submit" onclick="loginOperator()">Login as Operator</button>
         </div>
 
@@ -119,7 +115,7 @@
 </div>
 
 <script>
-    // AAPKE APNE FIREBASE PROJECT DETAILS (AUTOMATICALLY ADDED)
+    // Aapki exact Firebase config details
     const firebaseConfig = {
         apiKey: "AIzaSyAmhQqduxbS6-i6d62W97rTEVp9volypLg",
         authDomain: "shree-ji-print-production.firebaseapp.com",
@@ -131,15 +127,11 @@
         measurementId: "G-SNEC9TN8EL"
     };
 
-    // Initialize Firebase
     if (!firebase.apps.length) {
         firebase.initializeApp(firebaseConfig);
     }
     const auth = firebase.auth();
     const database = firebase.database();
-
-    // Firebase Operator Dummy Email (Aapki real Gmail safe rahegi)
-    const OPERATOR_FIREBASE_EMAIL = "op1@shreeji.com";
 
     document.getElementById('prodDate').valueAsDate = new Date();
 
@@ -156,17 +148,17 @@
         }
     }
 
+    // Operator direct Bina Password ke Login karega (Anonymous Login)
     function loginOperator() {
         const mId = document.getElementById('opMachineId').value;
-        const pass = document.getElementById('opPass').value;
 
         if (!mId) {
             alert("Kripya Machine ID enter karein!");
             return;
         }
 
-        auth.signInWithEmailAndPassword(OPERATOR_FIREBASE_EMAIL, pass)
-            .then((userCredential) => {
+        auth.signInAnonymously()
+            .then(() => {
                 document.getElementById('loginSection').classList.add('hidden');
                 document.getElementById('operatorDashboard').classList.remove('hidden');
                 document.getElementById('displayMachine').innerText = mId;
@@ -176,6 +168,7 @@
             });
     }
 
+    // Admin Email & Password se Login karega
     function loginAdmin() {
         const email = document.getElementById('adminUser').value;
         const pass = document.getElementById('adminPass').value;
@@ -191,6 +184,7 @@
             });
     }
 
+    // Data Firebase Cloud database mein save hoga
     function submitProduction() {
         const mId = document.getElementById('displayMachine').innerText;
         const date = document.getElementById('prodDate').value;
@@ -221,6 +215,7 @@
         });
     }
 
+    // Admin Panel mein Live Real-Time data update hoga
     function listenForAdminReports() {
         const reportsRef = database.ref('production_reports');
         reportsRef.on('value', (snapshot) => {
