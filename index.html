@@ -11,7 +11,7 @@
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #f4f7f6; padding: 15px; }
-        .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .container { max-width: 650px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         h2 { text-align: center; color: #333; margin-bottom: 20px; }
         .tabs { display: flex; margin-bottom: 20px; border-bottom: 2px solid #ddd; }
         .tab-btn { flex: 1; padding: 10px; text-align: center; background: #eee; cursor: pointer; font-weight: bold; border: none; outline: none; }
@@ -23,9 +23,13 @@
         button.btn-submit:hover { background: #218838; }
         .hidden { display: none; }
         .logout-btn { background: #dc3545; color: white; padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; float: right; margin-bottom: 15px; }
+        
+        /* Table Styling */
         table { width: 100%; border-collapse: collapse; margin-top: 15px; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: center; font-size: 13px; }
         th { background-color: #007bff; color: white; }
+        tfoot tr { background-color: #e9ecef; font-weight: bold; }
+        .delete-btn { background: #dc3545; color: white; border: none; padding: 3px 8px; border-radius: 3px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -105,17 +109,24 @@
                     <th>Shift</th>
                     <th>Job Name</th>
                     <th>Meters</th>
+                    <th>Action</th>
                 </tr>
             </thead>
             <tbody id="reportTableBody">
-                <!-- Data dynamically loaded from Firebase -->
+                <!-- Data dynamically loaded -->
             </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="4" style="text-align: right;"><strong>Total Meters:</strong></td>
+                    <td id="totalMetersCell"><strong>0 m</strong></td>
+                    <td></td>
+                </tr>
+            </tfoot>
         </table>
     </div>
 </div>
 
 <script>
-    // Aapki exact Firebase config details
     const firebaseConfig = {
         apiKey: "AIzaSyAmhQqduxbS6-i6d62W97rTEVp9volypLg",
         authDomain: "shree-ji-print-production.firebaseapp.com",
@@ -148,10 +159,8 @@
         }
     }
 
-    // Operator direct Bina Password ke Login karega (Anonymous Login)
     function loginOperator() {
         const mId = document.getElementById('opMachineId').value;
-
         if (!mId) {
             alert("Kripya Machine ID enter karein!");
             return;
@@ -168,7 +177,6 @@
             });
     }
 
-    // Admin Email & Password se Login karega
     function loginAdmin() {
         const email = document.getElementById('adminUser').value;
         const pass = document.getElementById('adminPass').value;
@@ -184,7 +192,6 @@
             });
     }
 
-    // Data Firebase Cloud database mein save hoga
     function submitProduction() {
         const mId = document.getElementById('displayMachine').innerText;
         const date = document.getElementById('prodDate').value;
@@ -203,42 +210,57 @@
             date: date,
             shift: shift,
             job: job,
-            meters: meters
+            meters: parseFloat(meters)
         }, function(error) {
             if (error) {
                 alert("Data save karne me error: " + error.message);
             } else {
-                alert("Production Report Cloud par Submit ho gayi!");
+                alert("Production Report Submit ho gayi!");
                 document.getElementById('jobName').value = "";
                 document.getElementById('prodMeters').value = "";
             }
         });
     }
 
-    // Admin Panel mein Live Real-Time data update hoga
     function listenForAdminReports() {
         const reportsRef = database.ref('production_reports');
         reportsRef.on('value', (snapshot) => {
             const data = snapshot.val();
             const tbody = document.getElementById('reportTableBody');
+            const totalCell = document.getElementById('totalMetersCell');
             tbody.innerHTML = "";
+            let grandTotal = 0;
 
             if(!data) {
-                tbody.innerHTML = "<tr><td colspan='5'>No reports available</td></tr>";
+                tbody.innerHTML = "<tr><td colspan='6'>No reports available</td></tr>";
+                totalCell.innerHTML = "<strong>0 m</strong>";
                 return;
             }
 
-            Object.values(data).reverse().forEach(r => {
+            Object.keys(data).reverse().forEach(key => {
+                const r = data[key];
+                const metersVal = parseFloat(r.meters) || 0;
+                grandTotal += metersVal;
+
                 const row = `<tr>
                     <td>${r.date}</td>
                     <td>${r.mId}</td>
                     <td>${r.shift}</td>
                     <td>${r.job}</td>
-                    <td><b>${r.meters} m</b></td>
+                    <td><b>${metersVal} m</b></td>
+                    <td><button class="delete-btn" onclick="deleteEntry('${key}')">X</button></td>
                 </tr>`;
                 tbody.innerHTML += row;
             });
+
+            totalCell.innerHTML = `<strong>${grandTotal} m</strong>`;
         });
+    }
+
+    function deleteEntry(key) {
+        if(confirm("Kya aap is entry ko delete karna chahte hain?")) {
+            database.ref('production_reports/' + key).remove();
+        }
     }
 
     function logout() {
