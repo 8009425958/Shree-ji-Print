@@ -1,591 +1,259 @@
 <!DOCTYPE html>
 <html lang="hi">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Shree Ji Print Production - Live Cloud Report</title>
-<!-- html2canvas library for image capture -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-
-<!-- Firebase SDK Integration -->
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-  import { getDatabase, ref, push, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-
-  // AAPKI FIREBASE CONFIG KEYS
-  const firebaseConfig = {
-    apiKey: "AIzaSyAmhQqduxbS6-i6d62W97rTEVp9volypLg",
-    authDomain: "shree-ji-print-production.firebaseapp.com",
-    databaseURL: "https://shree-ji-print-production-default-rtdb.firebaseio.com",
-    projectId: "shree-ji-print-production",
-    storageBucket: "shree-ji-print-production.firebasestorage.app",
-    messagingSenderId: "363365039117",
-    appId: "1:363365039117:web:d6745f223786f6fad2e944",
-    measurementId: "G-SNEC9TN8EL"
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const db = getDatabase(app);
-
-  window.auth = auth;
-  window.db = db;
-  window.ref = ref;
-  window.push = push;
-  window.set = set;
-  window.onValue = onValue;
-  window.signInWithEmailAndPassword = signInWithEmailAndPassword;
-  window.signOut = signOut;
-
-  // Auto Login Check
-  onAuthStateChanged(auth, (user) => {
-    if (user) {
-      document.getElementById('auth-panel').classList.add('hidden');
-      document.getElementById('main-dashboard').classList.remove('hidden');
-      document.getElementById('user-display').innerText = "Logged in: " + user.email;
-      listenToFirebaseReports();
-    } else {
-      document.getElementById('auth-panel').classList.remove('hidden');
-      document.getElementById('main-dashboard').classList.add('hidden');
-    }
-  });
-</script>
-
-<style>
-    * { box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; }
-    body { background-color: #0f172a; color: #f8fafc; margin: 0; padding: 10px; }
-    .container { max-width: 600px; margin: 10px auto; }
-    
-    .form-box {
-        background: #1e293b; padding: 18px; border-radius: 12px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.4); border: 1px solid #334155; position: relative;
-    }
-    .dev-credit { position: absolute; top: 10px; right: 15px; color: #ef4444; font-size: 0.75rem; font-weight: bold; }
-    h2 { color: #38bdf8; margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #0284c7; padding-bottom: 6px; }
-    
-    .input-group { margin-bottom: 10px; }
-    label { display: block; font-size: 0.85rem; color: #94a3b8; margin-bottom: 4px; font-weight: bold; }
-    input, select { width: 100%; padding: 10px; background: #0f172a; border: 1px solid #475569; color: #fff; border-radius: 6px; font-size: 0.95rem; font-weight: bold; }
-    input:focus, select:focus { border-color: #38bdf8; outline: none; }
-    
-    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .time-slot-grid { display: grid; grid-template-columns: 80px 80px 1fr 36px; gap: 6px; align-items: center; margin-top: 6px; }
-    
-    @media (max-width: 480px) {
-        .time-slot-grid { grid-template-columns: 70px 70px 1fr 32px; }
-        .time-slot-grid input { font-size: 0.85rem; padding: 8px 4px; }
-    }
-
-    .section-label { font-size: 0.9rem; font-weight: bold; margin-top: 14px; margin-bottom: 6px; display: block; padding: 6px 10px; border-radius: 6px; }
-    .lbl-day { background: #451a03; color: #fde047; border-left: 4px solid #eab308; }
-    .lbl-night { background: #1e1b4b; color: #a5b4fc; border-left: 4px solid #6366f1; }
-    
-    .btn { width: 100%; background: #0284c7; color: white; padding: 12px; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; margin-top: 12px; display: flex; align-items: center; justify-content: center; gap: 8px; }
-    .btn:hover { background: #0369a1; }
-    .btn-whatsapp { background: #25D366; color: #ffffff; }
-    .btn-secondary { background: #475569; }
-    .btn-small { background: #334155; padding: 6px 10px; font-size: 0.8rem; margin-top: 6px; width: auto; }
-    
-    .preview-box { display: flex; flex-direction: column; align-items: center; }
-    
-    /* REPORT CARD STYLING */
-    .report-card { width: 100%; max-width: 108mm; background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 6px; padding: 8px; color: #0f172a; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
-    .header-container { display: flex; justify-content: space-between; align-items: center; background: #0f172a; color: #ffffff; padding: 6px 10px; border-radius: 6px; margin-bottom: 5px; }
-    .header-title { font-size: 16pt; font-weight: 900; margin: 0; color: #38bdf8; }
-    .header-date { font-size: 10pt; font-weight: 900; color: #38bdf8; }
-    .card { background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 6px; padding: 5px 8px; margin-bottom: 5px; }
-    .section-title { font-size: 10pt; font-weight: 900; color: #0f172a; margin: 0 0 3px 0; padding-left: 5px; border-left: 3.5px solid #0284c7; text-transform: uppercase; }
-    table { width: 100%; border-collapse: collapse; margin-top: 2px; }
-    th, td { padding: 3.5px 6px; text-align: left; border-bottom: 1px solid #cbd5e1; }
-    th { background-color: #e2e8f0; color: #0f172a; font-size: 9pt; font-weight: 900; }
-    td { font-size: 9.5pt; font-weight: bold; color: #1e293b; }
-    .highlight-row-black { background-color: #000000 !important; }
-    .highlight-row-black td { font-size: 10.5pt !important; font-weight: 900 !important; color: #ffffff !important; border-bottom: none; }
-    .timeline-table td:first-child { width: 48%; font-weight: 900; color: #0284c7; font-size: 9pt; }
-    .operator-table td { width: 50%; font-size: 9.5pt; font-weight: 900; color: #0f172a; }
-    .ink-cost-box { background-color: #fef9c3; border: 1.5px solid #facc15; color: #713f12; padding: 5px 10px; border-radius: 6px; font-size: 9.5pt; font-weight: 900; margin-bottom: 5px; text-align: center; }
-    .hidden { display: none !important; }
-    .action-buttons { width: 100%; max-width: 108mm; margin-top: 10px; }
-
-    /* CALCULATOR MODAL */
-    #calc-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; justify-content: center; align-items: center; padding: 10px; }
-    .calc-box { background: #000000; width: 100%; max-width: 400px; border-radius: 20px; padding: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); border: 1px solid #1e293b; }
-    .calc-screen { width: 100%; background: #000000; color: #ffffff; font-size: 2.5rem; font-weight: 300; text-align: right; padding: 20px 10px; margin-bottom: 20px; word-break: break-all; min-height: 90px; }
-    .calc-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-    .calc-btn { background: #27272a; color: #ffffff; font-size: 1.4rem; font-weight: 500; height: 65px; border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-    .calc-btn-top { color: #f87171; font-size: 1.2rem; }
-    .calc-btn-op { color: #f87171; font-size: 1.6rem; }
-    .calc-btn-equal { background: #e11d48; color: #ffffff; font-size: 1.8rem; border-radius: 50%; height: 65px; }
-
-    /* Live Feed Card Styling */
-    .cloud-card { background: #1e293b; border-left: 4px solid #38bdf8; border-radius: 8px; padding: 12px; margin-bottom: 12px; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shree Ji Print Production System</title>
+    <!-- Firebase SDK Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f4f7f6; padding: 15px; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        h2 { text-align: center; color: #333; margin-bottom: 20px; }
+        .tabs { display: flex; margin-bottom: 20px; border-bottom: 2px solid #ddd; }
+        .tab-btn { flex: 1; padding: 10px; text-align: center; background: #eee; cursor: pointer; font-weight: bold; border: none; outline: none; }
+        .tab-btn.active { background: #007bff; color: white; border-radius: 5px 5px 0 0; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 14px; }
+        button.btn-submit { width: 100%; padding: 12px; background: #28a745; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; font-weight: bold; }
+        button.btn-submit:hover { background: #218838; }
+        .hidden { display: none; }
+        .logout-btn { background: #dc3545; color: white; padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; float: right; margin-bottom: 15px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; font-size: 13px; }
+        th { background-color: #007bff; color: white; }
+    </style>
 </head>
 <body>
 
 <div class="container">
+    <h2>Shree Ji Print Production</h2>
 
-    <!-- LOGIN PANEL -->
-    <div id="auth-panel" class="form-box">
-        <div class="dev-credit">Created by: Sachin Singh</div>
-        <h2>🔐 Log In to System</h2>
-        <div class="input-group">
-            <label>Email ID</label>
-            <input type="email" id="login_email" placeholder="e.g. sachin@gmail.com">
+    <!-- LOGIN SCREEN -->
+    <div id="loginSection">
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('operatorTab')">Operator Login</button>
+            <button class="tab-btn" onclick="switchTab('adminTab')">Admin Login</button>
         </div>
-        <div class="input-group">
-            <label>Password</label>
-            <input type="password" id="login_password" placeholder="******">
+
+        <!-- Operator Login Form -->
+        <div id="operatorTab">
+            <div class="form-group">
+                <label>Machine Name / ID</label>
+                <input type="text" id="opMachineId" placeholder="e.g. MS-JP7 (Machine 1)">
+            </div>
+            <div class="form-group">
+                <label>Operator Password</label>
+                <input type="password" id="opPass" placeholder="Enter Operator Password">
+            </div>
+            <button class="btn-submit" onclick="loginOperator()">Login as Operator</button>
         </div>
-        <button class="btn" onclick="userLogin()">Login Karein</button>
+
+        <!-- Admin Login Form -->
+        <div id="adminTab" class="hidden">
+            <div class="form-group">
+                <label>Admin Email</label>
+                <input type="email" id="adminUser" placeholder="Enter Admin Email">
+            </div>
+            <div class="form-group">
+                <label>Admin Password</label>
+                <input type="password" id="adminPass" placeholder="Enter Admin Password">
+            </div>
+            <button class="btn-submit" style="background:#007bff;" onclick="loginAdmin()">Login as Admin</button>
+        </div>
     </div>
 
-    <!-- MAIN DASHBOARD -->
-    <div id="main-dashboard" class="hidden">
+    <!-- OPERATOR DASHBOARD -->
+    <div id="operatorDashboard" class="hidden">
+        <button class="logout-btn" onclick="logout()">Logout</button>
+        <h3>Production Entry (<span id="displayMachine"></span>)</h3>
+        <hr style="margin: 10px 0;">
         
-        <!-- Header Controls -->
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-            <span id="user-display" style="color: #38bdf8; font-weight: bold; font-size: 0.9rem;">User: -</span>
-            <button class="btn" style="width: auto; padding: 6px 12px; background: #ef4444; margin:0; font-size: 0.85rem;" onclick="userLogout()">Logout</button>
+        <div class="form-group">
+            <label>Date</label>
+            <input type="date" id="prodDate">
         </div>
-
-        <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-            <button class="btn" style="margin:0;" onclick="switchTab('create')">📝 Nayi Report</button>
-            <button class="btn" style="margin:0; background: #059669;" onclick="switchTab('cloud')">🌐 Cloud Live Reports</button>
+        <div class="form-group">
+            <label>Shift</label>
+            <select id="prodShift">
+                <option>Day Shift</option>
+                <option>Night Shift</option>
+            </select>
         </div>
-
-        <!-- TAB 1: ENTRY FORM -->
-        <div id="tab-create">
-            <div class="form-box">
-                <h2>📝 Daily Report Input Form</h2>
-                
-                <div class="grid-2">
-                    <div class="input-group">
-                        <label>Machine Name</label>
-                        <input type="text" id="in_machine" placeholder="e.g. MS 2" list="machine_options">
-                        <datalist id="machine_options">
-                            <option value="MS 1"></option><option value="MS 2"></option><option value="MS 3"></option><option value="MS 4"></option>
-                        </datalist>
-                    </div>
-                    <div class="input-group">
-                        <label>Date</label>
-                        <input type="text" id="in_date" placeholder="DD-MM-YYYY">
-                    </div>
-                </div>
-
-                <div class="grid-2">
-                    <div class="input-group">
-                        <label>Day Details (in)</label>
-                        <input type="number" id="in_day_in" placeholder="0">
-                    </div>
-                    <div class="input-group">
-                        <label>Day Meter (Mtr)</label>
-                        <input type="number" id="in_day_mtr" placeholder="0">
-                    </div>
-                </div>
-
-                <div class="grid-2">
-                    <div class="input-group">
-                        <label>Night Details (in)</label>
-                        <input type="number" id="in_night_in" placeholder="0">
-                    </div>
-                    <div class="input-group">
-                        <label>Night Meter (Mtr)</label>
-                        <input type="number" id="in_night_mtr" placeholder="0">
-                    </div>
-                </div>
-
-                <div class="grid-2">
-                    <div class="input-group">
-                        <label>Sample Details (in)</label>
-                        <input type="number" id="in_simple_in" placeholder="0">
-                    </div>
-                    <div class="input-group">
-                        <label>Sample Meter (Mtr)</label>
-                        <input type="number" id="in_simple_mtr" placeholder="0">
-                    </div>
-                </div>
-
-                <button type="button" class="btn btn-secondary" onclick="openCalc()" style="background: #047857; margin-bottom: 10px;">🧮 Calculator Open Karein</button>
-
-                <div class="input-group">
-                    <label>Ink Cost (Ltr)</label>
-                    <input type="text" id="in_ink" placeholder="e.g. 14.6">
-                </div>
-
-                <span class="section-label lbl-day">☀️ Day Report (Shift: 9:00 AM – 9:00 PM)</span>
-                <div id="day_slots_container"></div>
-                <button type="button" class="btn btn-small" onclick="addDaySlot()">+ Add Day Row</button>
-
-                <span class="section-label lbl-night">🌙 Night Report (Shift: 9:00 PM – 9:00 AM)</span>
-                <div id="night_slots_container"></div>
-                <button type="button" class="btn btn-small" onclick="addNightSlot()">+ Add Night Row</button>
-
-                <label style="color: #34d399; margin-top: 14px; display: block; font-weight: bold;">Operators</label>
-                <div class="grid-2">
-                    <div>
-                        <select id="in_day_op" onchange="checkOpOther('day')">
-                            <option value="">-- Day Operator --</option>
-                            <option value="SACHIN SINGH">SACHIN SINGH</option>
-                            <option value="PRINCE PATEL">PRINCE PATEL</option>
-                            <option value="NARENDRA YADAV">NARENDRA YADAV</option>
-                            <option value="VICKY">VICKY</option>
-                            <option value="OTHER">OTHER</option>
-                        </select>
-                        <input type="text" id="in_day_op_other" placeholder="Enter Name" class="hidden" style="margin-top: 5px;">
-                    </div>
-                    <div>
-                        <select id="in_night_op" onchange="checkOpOther('night')">
-                            <option value="">-- Night Operator --</option>
-                            <option value="SACHIN SINGH">SACHIN SINGH</option>
-                            <option value="PRINCE PATEL">PRINCE PATEL</option>
-                            <option value="NARENDRA YADAV">NARENDRA YADAV</option>
-                            <option value="VICKY">VICKY</option>
-                            <option value="OTHER">OTHER</option>
-                        </select>
-                        <input type="text" id="in_night_op_other" placeholder="Enter Name" class="hidden" style="margin-top: 5px;">
-                    </div>
-                </div>
-
-                <button class="btn" onclick="generateReportAndSaveFirebase()">☁️ Cloud Par Save & View Report</button>
-            </div>
+        <div class="form-group">
+            <label>Design / Job Name</label>
+            <input type="text" id="jobName" placeholder="Enter Design Name">
         </div>
-
-        <!-- TAB 2: LIVE FIREBASE DATABASE -->
-        <div id="tab-cloud" class="hidden">
-            <h2 style="color: #38bdf8;">🌐 Sabhi Submitted Cloud Reports</h2>
-            <div id="cloud-feed">Reports load ho rhi hain...</div>
+        <div class="form-group">
+            <label>Total Meters Printed</label>
+            <input type="number" id="prodMeters" placeholder="e.g. 1200">
         </div>
-
-        <!-- REPORT PREVIEW SCREEN -->
-        <div id="step-preview" class="preview-box hidden">
-            <div class="report-card">
-                <div class="header-container">
-                    <h1 class="header-title" id="out_machine">MS 2</h1>
-                    <div class="header-date" id="out_date">30-08-2026</div>
-                </div>
-
-                <div class="card">
-                    <h2 class="section-title">Production</h2>
-                    <table>
-                        <thead>
-                            <tr><th>Shift</th><th>Details</th><th>Meter</th></tr>
-                        </thead>
-                        <tbody>
-                            <tr><td>Day Shift</td><td><span id="out_day_in">0</span> in</td><td><span id="out_day_mtr">0</span> Mtr</td></tr>
-                            <tr><td>Night Shift</td><td><span id="out_night_in">0</span> in</td><td><span id="out_night_mtr">0</span> Mtr</td></tr>
-                            <tr id="out_simple_row"><td>Sample</td><td><span id="out_simple_in">0</span> in</td><td><span id="out_simple_mtr">0</span> Mtr</td></tr>
-                            <tr class="highlight-row-black">
-                                <td>TOTAL</td>
-                                <td id="out_total_in">0</td>
-                                <td id="out_total_mtr">0 Mtr</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="ink-cost-box" id="out_ink_box">
-                    Ink Cost Day & Night: ( <span id="out_ink">0</span> Ltr )
-                </div>
-
-                <div class="card" id="out_day_card">
-                    <h2 class="section-title" style="border-left-color: #eab308;">Day Report</h2>
-                    <table class="timeline-table">
-                        <thead><tr><th>Time</th><th>Report</th></tr></thead>
-                        <tbody id="out_day_table_body"></tbody>
-                    </table>
-                </div>
-
-                <div class="card" id="out_night_card">
-                    <h2 class="section-title" style="border-left-color: #6366f1;">Night Report</h2>
-                    <table class="timeline-table">
-                        <thead><tr><th>Time</th><th>Report</th></tr></thead>
-                        <tbody id="out_night_table_body"></tbody>
-                    </table>
-                </div>
-
-                <div class="card">
-                    <h2 class="section-title" style="border-left-color: #10b981;">Operators</h2>
-                    <table class="operator-table">
-                        <thead><tr><th>Day Op</th><th>Night Op</th></tr></thead>
-                        <tbody>
-                            <tr><td id="out_day_op">-</td><td id="out_night_op">-</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div class="action-buttons">
-                <button class="btn btn-whatsapp" onclick="shareReport()">📤 Share / Send WhatsApp</button>
-                <button class="btn btn-secondary" onclick="window.print()">🖨️ Print / Save PDF</button>
-                <button class="btn btn-secondary" onclick="goToForm()">✏️ Back to Edit Form</button>
-            </div>
-        </div>
-
+        <button class="btn-submit" onclick="submitProduction()">Submit Report</button>
     </div>
-</div>
 
-<!-- CALCULATOR MODAL -->
-<div id="calc-modal">
-    <div class="calc-box">
-        <div style="display: flex; justify-content: flex-end; margin-bottom: 5px;">
-            <button type="button" onclick="closeCalc()" style="background: none; border: none; color: #ef4444; font-size: 1.2rem; font-weight: bold; cursor: pointer;">✕ Close</button>
-        </div>
-        <div class="calc-screen" id="calc-screen">0</div>
-        <div class="calc-grid">
-            <button type="button" class="calc-btn calc-btn-top" onclick="calcClear()">AC</button>
-            <button type="button" class="calc-btn calc-btn-top" onclick="calcBack()">⌫</button>
-            <button type="button" class="calc-btn calc-btn-top" onclick="calcOp('+/-')">+/-</button>
-            <button type="button" class="calc-btn calc-btn-op" onclick="calcOp('÷')">÷</button>
-            
-            <button type="button" class="calc-btn" onclick="calcNum('7')">7</button>
-            <button type="button" class="calc-btn" onclick="calcNum('8')">8</button>
-            <button type="button" class="calc-btn" onclick="calcNum('9')">9</button>
-            <button type="button" class="calc-btn calc-btn-op" onclick="calcOp('×')">×</button>
-            
-            <button type="button" class="calc-btn" onclick="calcNum('4')">4</button>
-            <button type="button" class="calc-btn" onclick="calcNum('5')">5</button>
-            <button type="button" class="calc-btn" onclick="calcNum('6')">6</button>
-            <button type="button" class="calc-btn calc-btn-op" onclick="calcOp('-')">-</button>
-            
-            <button type="button" class="calc-btn" onclick="calcNum('1')">1</button>
-            <button type="button" class="calc-btn" onclick="calcNum('2')">2</button>
-            <button type="button" class="calc-btn" onclick="calcNum('3')">3</button>
-            <button type="button" class="calc-btn calc-btn-op" onclick="calcOp('+')">+</button>
-            
-            <button type="button" class="calc-btn" onclick="calcOp('%')">%</button>
-            <button type="button" class="calc-btn" onclick="calcNum('0')">0</button>
-            <button type="button" class="calc-btn" onclick="calcNum('.')">.</button>
-            <button type="button" class="calc-btn calc-btn-equal" onclick="calcEqual()">=</button>
-        </div>
+    <!-- ADMIN DASHBOARD -->
+    <div id="adminDashboard" class="hidden">
+        <button class="logout-btn" onclick="logout()">Logout</button>
+        <h3>All Machines Production Report</h3>
+        <hr style="margin: 10px 0;">
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Machine</th>
+                    <th>Shift</th>
+                    <th>Job Name</th>
+                    <th>Meters</th>
+                </tr>
+            </thead>
+            <tbody id="reportTableBody">
+                <!-- Data dynamically loaded from Firebase -->
+            </tbody>
+        </table>
     </div>
 </div>
 
 <script>
-// Authentication System
-function userLogin() {
-    let email = document.getElementById('login_email').value;
-    let pass = document.getElementById('login_password').value;
-    window.signInWithEmailAndPassword(window.auth, email, pass)
-        .catch(err => alert("Login Error: " + err.message));
-}
-
-function userLogout() {
-    window.signOut(window.auth);
-}
-
-function switchTab(tab) {
-    if(tab === 'create') {
-        document.getElementById('tab-create').classList.remove('hidden');
-        document.getElementById('tab-cloud').classList.add('hidden');
-        document.getElementById('step-preview').classList.add('hidden');
-    } else {
-        document.getElementById('tab-create').classList.add('hidden');
-        document.getElementById('step-preview').classList.add('hidden');
-        document.getElementById('tab-cloud').classList.remove('hidden');
-    }
-}
-
-// Slot Management
-function initSlots() {
-    addDaySlot();
-    addNightSlot();
-    setTodayDate();
-}
-
-function addDaySlot() {
-    let container = document.getElementById('day_slots_container');
-    let div = document.createElement('div');
-    div.className = 'time-slot-grid';
-    div.innerHTML = `
-        <input type="text" placeholder="Start" class="d_start">
-        <input type="text" placeholder="End" class="d_end">
-        <input type="text" placeholder="Report" class="d_rep">
-        <button type="button" class="btn btn-secondary" style="margin:0; padding:6px; font-size:0.8rem;" onclick="this.parentElement.remove()">❌</button>
-    `;
-    container.appendChild(div);
-}
-
-function addNightSlot() {
-    let container = document.getElementById('night_slots_container');
-    let div = document.createElement('div');
-    div.className = 'time-slot-grid';
-    div.innerHTML = `
-        <input type="text" placeholder="Start" class="n_start">
-        <input type="text" placeholder="End" class="n_end">
-        <input type="text" placeholder="Report" class="n_rep">
-        <button type="button" class="btn btn-secondary" style="margin:0; padding:6px; font-size:0.8rem;" onclick="this.parentElement.remove()">❌</button>
-    `;
-    container.appendChild(div);
-}
-
-function setTodayDate() {
-    let d = new Date();
-    let day = String(d.getDate()).padStart(2, '0');
-    let month = String(d.getMonth() + 1).padStart(2, '0');
-    let year = d.getFullYear();
-    document.getElementById('in_date').value = `${day}-${month}-${year}`;
-}
-
-function checkOpOther(shift) {
-    let sel = document.getElementById(`in_${shift}_op`);
-    let otherInput = document.getElementById(`in_${shift}_op_other`);
-    if(sel.value === 'OTHER') otherInput.classList.remove('hidden');
-    else { otherInput.classList.add('hidden'); otherInput.value = ''; }
-}
-
-// Calculator Logic
-let calcInput = "0", calcPrev = "", calcOpSign = null;
-function openCalc() { document.getElementById('calc-modal').style.display = 'flex'; }
-function closeCalc() { document.getElementById('calc-modal').style.display = 'none'; }
-function updateCalcScreen() { document.getElementById('calc-screen').innerText = calcInput; }
-function calcNum(n) { calcInput = (calcInput === "0") ? n : calcInput + n; updateCalcScreen(); }
-function calcClear() { calcInput = "0"; calcPrev = ""; calcOpSign = null; updateCalcScreen(); }
-function calcBack() { calcInput = calcInput.slice(0, -1); if(calcInput === "" || calcInput === "-") calcInput = "0"; updateCalcScreen(); }
-function calcOp(op) {
-    if(op === '+/-') { calcInput = calcInput.startsWith('-') ? calcInput.slice(1) : '-' + calcInput; updateCalcScreen(); return; }
-    if(op === '%') { calcInput = String(parseFloat(calcInput) / 100); updateCalcScreen(); return; }
-    calcPrev = calcInput; calcOpSign = op; calcInput = "0";
-}
-function calcEqual() {
-    if(!calcOpSign || !calcPrev) return;
-    let p = parseFloat(calcPrev), c = parseFloat(calcInput), res = 0;
-    switch(calcOpSign) {
-        case '+': res = p + c; break; case '-': res = p - c; break;
-        case '×': res = p * c; break; case '÷': res = c !== 0 ? p / c : 0; break;
-    }
-    calcInput = String(res); calcOpSign = null; calcPrev = ""; updateCalcScreen();
-}
-
-// Firebase Save & Local Preview
-function generateReportAndSaveFirebase() {
-    let machine = document.getElementById('in_machine').value || "MS";
-    let date = document.getElementById('in_date').value || "-";
-    let dayIn = parseFloat(document.getElementById('in_day_in').value) || 0;
-    let dayMtr = parseFloat(document.getElementById('in_day_mtr').value) || 0;
-    let nightIn = parseFloat(document.getElementById('in_night_in').value) || 0;
-    let nightMtr = parseFloat(document.getElementById('in_night_mtr').value) || 0;
-    let simpleIn = parseFloat(document.getElementById('in_simple_in').value) || 0;
-    let simpleMtr = parseFloat(document.getElementById('in_simple_mtr').value) || 0;
-    let inkVal = document.getElementById('in_ink').value.trim();
-
-    let dayOp = document.getElementById('in_day_op').value;
-    if(dayOp === 'OTHER') dayOp = document.getElementById('in_day_op_other').value.trim();
-    let nightOp = document.getElementById('in_night_op').value;
-    if(nightOp === 'OTHER') nightOp = document.getElementById('in_night_op_other').value.trim();
-
-    let daySlots = [], nightSlots = [];
-    document.querySelectorAll('#day_slots_container .time-slot-grid').forEach(row => {
-        let s = row.querySelector('.d_start').value.trim(), e = row.querySelector('.d_end').value.trim(), r = row.querySelector('.d_rep').value.trim();
-        if(s || e || r) daySlots.push({ start: s, end: e, rep: r });
-    });
-    document.querySelectorAll('#night_slots_container .time-slot-grid').forEach(row => {
-        let s = row.querySelector('.n_start').value.trim(), e = row.querySelector('.n_end').value.trim(), r = row.querySelector('.n_rep').value.trim();
-        if(s || e || r) nightSlots.push({ start: s, end: e, rep: r });
-    });
-
-    let reportData = {
-        machine, date, dayIn, dayMtr, nightIn, nightMtr, simpleIn, simpleMtr,
-        totalIn: dayIn + nightIn + simpleIn,
-        totalMtr: dayMtr + nightMtr + simpleMtr,
-        inkVal, dayOp, nightOp, daySlots, nightSlots,
-        submittedBy: window.auth.currentUser.email,
-        timestamp: Date.now()
+    // AAPKE APNE FIREBASE PROJECT DETAILS (AUTOMATICALLY ADDED)
+    const firebaseConfig = {
+        apiKey: "AIzaSyAmhQqduxbS6-i6d62W97rTEVp9volypLg",
+        authDomain: "shree-ji-print-production.firebaseapp.com",
+        databaseURL: "https://shree-ji-print-production-default-rtdb.firebaseio.com",
+        projectId: "shree-ji-print-production",
+        storageBucket: "shree-ji-print-production.firebasestorage.app",
+        messagingSenderId: "363365039117",
+        appId: "1:363365039117:web:d6745f223786f6fad2e944",
+        measurementId: "G-SNEC9TN8EL"
     };
 
-    // Save to Firebase Cloud
-    let newRef = window.push(window.ref(window.db, 'reports'));
-    window.set(newRef, reportData).then(() => {
-        alert("☁️ Report Firebase Database Par Save Ho Gayi!");
-    });
+    // Initialize Firebase
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
+    const auth = firebase.auth();
+    const database = firebase.database();
 
-    // Render Preview Local UI
-    renderPreviewUI(reportData);
-}
+    // Firebase Operator Dummy Email (Aapki real Gmail safe rahegi)
+    const OPERATOR_FIREBASE_EMAIL = "op1@shreeji.com";
 
-function renderPreviewUI(data) {
-    document.getElementById('out_machine').innerText = data.machine;
-    document.getElementById('out_date').innerText = data.date;
-    document.getElementById('out_day_in').innerText = data.dayIn;
-    document.getElementById('out_day_mtr').innerText = data.dayMtr.toLocaleString();
-    document.getElementById('out_night_in').innerText = data.nightIn;
-    document.getElementById('out_night_mtr').innerText = data.nightMtr.toLocaleString();
+    document.getElementById('prodDate').valueAsDate = new Date();
 
-    if(data.simpleIn > 0 || data.simpleMtr > 0) {
-        document.getElementById('out_simple_row').style.display = "";
-        document.getElementById('out_simple_in').innerText = data.simpleIn;
-        document.getElementById('out_simple_mtr').innerText = data.simpleMtr.toLocaleString();
-    } else { document.getElementById('out_simple_row').style.display = "none"; }
+    function switchTab(tabName) {
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        if(tabName === 'operatorTab') {
+            event.target.classList.add('active');
+            document.getElementById('operatorTab').classList.remove('hidden');
+            document.getElementById('adminTab').classList.add('hidden');
+        } else {
+            event.target.classList.add('active');
+            document.getElementById('adminTab').classList.remove('hidden');
+            document.getElementById('operatorTab').classList.add('hidden');
+        }
+    }
 
-    document.getElementById('out_total_in').innerText = data.totalIn;
-    document.getElementById('out_total_mtr').innerText = data.totalMtr.toLocaleString() + " Mtr";
+    function loginOperator() {
+        const mId = document.getElementById('opMachineId').value;
+        const pass = document.getElementById('opPass').value;
 
-    if(data.inkVal) {
-        document.getElementById('out_ink_box').style.display = "";
-        document.getElementById('out_ink').innerText = data.inkVal;
-    } else { document.getElementById('out_ink_box').style.display = "none"; }
+        if (!mId) {
+            alert("Kripya Machine ID enter karein!");
+            return;
+        }
 
-    let dayHTML = data.daySlots.map(s => `<tr><td>${s.start}${s.end ? ' – ' + s.end : ''}</td><td>${s.rep}</td></tr>`).join('');
-    document.getElementById('out_day_table_body').innerHTML = dayHTML || `<tr><td colspan="2">N/A</td></tr>`;
+        auth.signInWithEmailAndPassword(OPERATOR_FIREBASE_EMAIL, pass)
+            .then((userCredential) => {
+                document.getElementById('loginSection').classList.add('hidden');
+                document.getElementById('operatorDashboard').classList.remove('hidden');
+                document.getElementById('displayMachine').innerText = mId;
+            })
+            .catch((error) => {
+                alert("Operator Login Fail: " + error.message);
+            });
+    }
 
-    let nightHTML = data.nightSlots.map(s => `<tr><td>${s.start}${s.end ? ' – ' + s.end : ''}</td><td>${s.rep}</td></tr>`).join('');
-    document.getElementById('out_night_table_body').innerHTML = nightHTML || `<tr><td colspan="2">N/A</td></tr>`;
+    function loginAdmin() {
+        const email = document.getElementById('adminUser').value;
+        const pass = document.getElementById('adminPass').value;
 
-    document.getElementById('out_day_op').innerText = data.dayOp || "-";
-    document.getElementById('out_night_op').innerText = data.nightOp || "-";
+        auth.signInWithEmailAndPassword(email, pass)
+            .then((userCredential) => {
+                document.getElementById('loginSection').classList.add('hidden');
+                document.getElementById('adminDashboard').classList.remove('hidden');
+                listenForAdminReports();
+            })
+            .catch((error) => {
+                alert("Admin Login Fail: " + error.message);
+            });
+    }
 
-    document.getElementById('tab-create').classList.add('hidden');
-    document.getElementById('step-preview').classList.remove('hidden');
-}
+    function submitProduction() {
+        const mId = document.getElementById('displayMachine').innerText;
+        const date = document.getElementById('prodDate').value;
+        const shift = document.getElementById('prodShift').value;
+        const job = document.getElementById('jobName').value;
+        const meters = document.getElementById('prodMeters').value;
 
-// Live Firebase Data Listener
-function listenToFirebaseReports() {
-    window.onValue(window.ref(window.db, 'reports'), (snapshot) => {
-        let feed = document.getElementById('cloud-feed');
-        feed.innerHTML = "";
-        let val = snapshot.val();
-        if(!val) { feed.innerHTML = "<p>Koi reports abhi save nahi hain.</p>"; return; }
+        if (!job || !meters) {
+            alert("Kripya sari details bharein!");
+            return;
+        }
 
-        Object.keys(val).reverse().forEach(key => {
-            let item = val[key];
-            let div = document.createElement('div');
-            div.className = 'cloud-card';
-            div.innerHTML = `
-                <div style="font-size: 1.1rem; font-weight: bold; color: #38bdf8;">${item.machine} | ${item.date}</div>
-                <div>Day: ${item.dayMtr} Mtr | Night: ${item.nightMtr} Mtr</div>
-                <div style="color: #34d399; font-weight: bold;">Total: ${item.totalMtr} Mtr</div>
-                <div style="font-size: 0.8rem; color: #94a3b8; margin-top:4px;">Submitted By: ${item.submittedBy}</div>
-            `;
-            feed.appendChild(div);
-        });
-    });
-}
-
-function goToForm() {
-    document.getElementById('step-preview').classList.add('hidden');
-    document.getElementById('tab-create').classList.remove('hidden');
-}
-
-function shareReport() {
-    let reportCard = document.querySelector('.report-card');
-    html2canvas(reportCard, { scale: 2 }).then(canvas => {
-        canvas.toBlob(blob => {
-            let file = new File([blob], "Production-Report.png", { type: "image/png" });
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                navigator.share({ files: [file], title: 'Production Report' }).catch(() => {});
+        const newReportRef = database.ref('production_reports').push();
+        newReportRef.set({
+            mId: mId,
+            date: date,
+            shift: shift,
+            job: job,
+            meters: meters
+        }, function(error) {
+            if (error) {
+                alert("Data save karne me error: " + error.message);
             } else {
-                let link = document.createElement('a');
-                link.download = 'Production-Report.png';
-                link.href = canvas.toDataURL('image/png');
-                link.click();
-                alert("📸 Report Photo download ho gayi hai! WhatsApp par attach karke bhej sakte hain.");
+                alert("Production Report Cloud par Submit ho gayi!");
+                document.getElementById('jobName').value = "";
+                document.getElementById('prodMeters').value = "";
             }
         });
-    });
-}
+    }
 
-initSlots();
+    function listenForAdminReports() {
+        const reportsRef = database.ref('production_reports');
+        reportsRef.on('value', (snapshot) => {
+            const data = snapshot.val();
+            const tbody = document.getElementById('reportTableBody');
+            tbody.innerHTML = "";
+
+            if(!data) {
+                tbody.innerHTML = "<tr><td colspan='5'>No reports available</td></tr>";
+                return;
+            }
+
+            Object.values(data).reverse().forEach(r => {
+                const row = `<tr>
+                    <td>${r.date}</td>
+                    <td>${r.mId}</td>
+                    <td>${r.shift}</td>
+                    <td>${r.job}</td>
+                    <td><b>${r.meters} m</b></td>
+                </tr>`;
+                tbody.innerHTML += row;
+            });
+        });
+    }
+
+    function logout() {
+        auth.signOut().then(() => {
+            document.getElementById('operatorDashboard').classList.add('hidden');
+            document.getElementById('adminDashboard').classList.add('hidden');
+            document.getElementById('loginSection').classList.remove('hidden');
+        });
+    }
 </script>
+
 </body>
 </html>
